@@ -6,6 +6,9 @@
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+#define TRIG_PIN 12  // GPIO pin for the TRIG pin of the HC-SR04
+#define ECHO_PIN 14  // GPIO pin for the ECHO pin of the HC-SR04 (with voltage divider)
+
 void setup_wifi() {
   delay(10);
   Serial.println();
@@ -39,8 +42,32 @@ void reconnect() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);  // Set TRIG_PIN as OUTPUT
+  pinMode(ECHO_PIN, INPUT);   // Set ECHO_PIN as INPUT
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
+}
+
+float measure_distance(){
+    // Send a 10us HIGH pulse to the TRIG_PIN to trigger the sensor
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // Measure the pulse duration on the ECHO_PIN
+  long duration = pulseIn(ECHO_PIN, HIGH);
+
+  // Calculate the distance based on the duration
+  // Speed of sound = 34300 cm/s, so distance (cm) = duration * 0.0343 / 2
+  float distance = duration * 0.0343 / 2;
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  return distance;
 }
 
 void loop() {
@@ -50,7 +77,7 @@ void loop() {
   client.loop();
 
   // Simulated sensor data (e.g., temperature and humidity)
-  float distance = random(10, 50);  // Simulate distance
+  float distance = measure_distance();
 
   // Create a JSON object
   StaticJsonDocument<200> jsonDoc;
@@ -66,5 +93,5 @@ void loop() {
   Serial.println("Published JSON: ");
   Serial.println(jsonBuffer);
 
-  delay(5000);  // Delay before sending the next message
+  delay(1000);  // Delay before sending the next message
 }
